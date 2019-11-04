@@ -66,6 +66,7 @@ app.post('/scream', (req, res)=>{
 });
 
 //sign up route
+let token, userId;
 app.post('/signup', (req, res)=>{
   const newUser ={
     email: req.body.email,
@@ -83,25 +84,30 @@ app.post('/signup', (req, res)=>{
       return firebase.auth().createUserWithEmailAndPassword(newUser.email, newUser.password);
     }
   }).then(data=>{
+      userId = data.user.uid;
       return data.user.getIdToken();
-  }).then(token=>{
+  }).then(idToken=>{
+    token = idToken;
+    const userCrendentials ={
+      handle: newUser.handle,
+      email: newUser.email,
+      createdAt: new Date().toISOString(),
+      userId
+    };
+    db.doc(`/users/${newUser.handle}`).set(userCrendentials)
+  }).then(()=>{
     return res.status(201).json({token});
-  }).catch(err=>{
-    console.error(err);
-    return res.status(500).json({error: err.code})
   })
+  .catch(err=>{
+    console.error(err);
+    if (err.code == 'auth/email-already-in-use') {
+      return res.status(400).json({email: 'Email already in use'})
 
+    }else{
+      return res.status(500).json({error: err.code})
+    }
 
-//default way of creating a new user
-//   firebase.auth().createUserWithEmailAndPassword(newUser.email, newUser.password).
-//   then(data=>{
-//     return res.status(201).json({message: `user ${data.user.uid} signed up successfully`});
-//   }).
-//   catch(err=>{
-//     console.error(err);
-//     return res.status(500).json({error: err.code});
-//   })
-
+  })
 });
 
 //check it out => exports.api = functions.region.().https.onRequest(app);
