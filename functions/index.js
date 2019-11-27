@@ -5,7 +5,7 @@ const app = express();
 
 
 const {getAllScreams, postOneScream} = require('./handlers/screams');
-const {signup, login} = require('./handlers/users');
+const {signup, login, uploadImage} = require('./handlers/users');
 
 const FBAuth = require('./util/FBAuth')
 
@@ -18,8 +18,9 @@ app.post('/scream',FBAuth, postOneScream);
 app.post('/signup', signup);
 app.post('/login', login)
 
-let token, userId;
+//image upload
 
+app.post('/user/image',FBAuth, uploadImage)
 
 //check it out => exports.api = functions.region.().https.onRequest(app);
 
