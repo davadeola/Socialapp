@@ -37,7 +37,7 @@ exports.signup = (req, res)=>{
       return data.user.getIdToken();
   }).then(idToken=>{
     token = idToken;
-    const userCrendentials ={
+    const userCredentials ={
       handle: newUser.handle,
       email: newUser.email,
       createdAt: new Date().toISOString(),
@@ -45,7 +45,7 @@ exports.signup = (req, res)=>{
 
       userId
     };
-    db.doc(`/users/${newUser.handle}`).set(userCrendentials)
+    db.doc(`/users/${newUser.handle}`).set(userCredentials)
   }).then(()=>{
     return res.status(201).json({token});
   })
@@ -123,8 +123,25 @@ exports.getAuthenticatedUser=(req, res)=>{
     data.forEach(doc=>{
       userData.likes.push(doc.data());
     });
-    return res.json(userData);
-  }).catch(err=>{
+
+    return db.collection('notifications').where('recipient', '==', req.user.handle).orderBy('createdAt', 'desc').limit(10).get()
+
+  }).then((data)=>{
+      userData.notifications = [];
+      data.forEach((doc)=>{
+        userData.notifications.push({
+          recipient: doc.data().recipient,
+          createdAt: doc.data().createdAt,
+          sender: doc.data().sender,
+          screamId: doc.data().screamId,
+          type: doc.data().type,
+          read: doc.data().read,
+          notificationId: doc.id
+        })
+      })
+      res.json(userData);
+  })
+  .catch(err=>{
     console.error(err);
     return res.status(500).json({error: err.code})
   })
@@ -187,4 +204,58 @@ exports.uploadImage =(req, res)=>{
   })
 
   busboy.end(req.rawBody);
+}
+
+
+//get any user's details
+
+exports.getUserDetails=(req, res)=>{
+  let userData={};
+  db.doc(`/users/${req.params.handle}`).get()
+  .then((doc)=>{
+    if (doc.exists) {
+      userData.user = doc.data();
+      return db.collection('screams').where('userHandle', "==", req.params.handle)
+      .orderBy('createdAt', 'desc')
+      .get();
+    }else{
+      return res.status(404).json({error: 'User not found'})
+    }
+  }).then(data=>{
+    userData.screams = [];
+    data.forEach(doc=>{
+      userData.screams.push({
+        screamId: doc.id,
+        body: doc.data().body,
+        createdAt: doc.data().createdAt,
+        userHandle: doc.data().userHandle,
+        userImage: doc.data().userImage,
+        likeCount: doc.data().likeCount,
+        commentCount: doc.data().commentCount,
+      })
+    })
+    return res.json(userData)
+  })
+  .catch((err)=>{
+    console.error(err);
+    return res.status(500).json({error: err.code});
+  })
+}
+
+
+exports.markNotificationsRead=(req, res)=>{
+  let batch = db.batch();
+  req.body.forEach(notificationId=>{
+    const notification = db.doc(`/notifications/${notificationId}`);
+
+    batch.update(notification, {read: true});
+  })
+
+  batch.commit()
+  .then(()=>{
+    return res.json({message: 'Notifications marked as read'});
+  }).catch((err)=>{
+    console.error(err);
+    return res.status(500).json({error: err.code});
+  })
 }
