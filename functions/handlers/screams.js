@@ -12,7 +12,10 @@ db
         screamId:doc.id,
         body: doc.data().body,
         userHandle: doc.data().userHandle,
-        createdAt:doc.data().createdAt
+        createdAt:doc.data().createdAt,
+        likeCount: doc.data().likeCount,
+        userImage: doc.data().userImage,
+        commentCount: doc.data().commentCount
       });
     });
     return res.json(screams);
@@ -79,7 +82,7 @@ exports.getScream=(req, res)=>{
 //comment on a comment
 exports.commentOnScream=(req, res)=>{
   if (req.body.body.trim() == '') {
-    return res.status(400).json({error: 'Must not be empty'})
+    return res.status(400).json({comment: 'Must not be empty'})
   }
 
   const newComment ={
